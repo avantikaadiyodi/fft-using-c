@@ -1,12 +1,55 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <complex.h>
-#define _USE_MATH_DEFINES
-#include <math.h>
+// code doesnt work. either logic is wrong or it's implemented wrong. need to fix in future
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <complex.h>
+#define M_PI 3.14159265358979323846
 
 // takes input sequence from text files and performs n-point FFT and prints output
 
+typedef struct {
+    double real;
+    double imag;
+} Complex;
+
+void n_point_fft(Complex *x, int n) {
+    if (n <=1 ) {return;}
+
+    int i = 0, j = 0, k = 0, W = 0;
+
+    Complex *column_matrix = malloc(n/2 * sizeof(Complex));
+    Complex *row_matrix = malloc(n/2 * sizeof(Complex));
+    
+    Complex *real_W_matrix = malloc(n/2 * sizeof(Complex));
+    Complex *imag_W_matrix = malloc(n/2 * sizeof(Complex));
+    
+    Complex *real_output_matrix = malloc(n/2 * sizeof(Complex));
+    Complex *imag_output_matrix = malloc(n/2 * sizeof(Complex));
+    
+    Complex *x_matrix = malloc(n/2 * sizeof(Complex));
+
+    i = 0; j = 0;
+    // making column matrix
+    while (i < n/2) {
+        while (j < n/2) {
+            column_matrix[j][i] = x[j];
+            j++; // next row
+        }
+        i++; // next column
+    }
+    // need to free memory
+
+    if (n == 1) { return column_matrix; }
+   
+    for (int k = 0; k < n/2; k++){
+        x_matrix = n_point_fft(column_matrix[k], (n/2));
+        real_W_matrix, imag_W_matrix = make_twiddle_factor_matrix(n/2, n/2, n);
+        real_output_matrix, imag_output_matrix = dft_multiply(x_matrix, real_W_matrix, imag_W_matrix, n);
+    }
+
+    return real_output_matrix, imag_output_matrix;
+}
 
 double _Complex** make_twiddle_factor_matrix(int k, int n, int N) { // do we want this to return a pointer or like rn
     float W_real, W_imag; 
@@ -51,53 +94,7 @@ double _Complex** dft_multiply(double _Complex** x_matrix, double _Complex** rea
     return real_dft_matrix, imag_dft_matrix;
 }
 
-int n_point_fft(int *sequence, int n) {
-    int l = n/2; // number of rows
-    int m = n/2; // number of columns
-    int p = n/2;
-    int q = n/2;
-    int i = 0, j = 0;
-    int k = 0;
-    int W = 0;
 
-    int **column_matrix = (int **)malloc(l * sizeof(int *)); 
-    for (int i = 0; i < l; i++) { column_matrix[i] = (int *)malloc(m * sizeof(int)); }
-
-    int **row_matrix = (int **)malloc(l * sizeof(int *));
-    for (int i = 0; i < l; i++) { row_matrix[i] = (int *)malloc(m * sizeof(int)); }
-    
-    float **real_W_matrix = (float **)malloc(l * sizeof(float *));
-    for (int i = 0; i < l; i++) { real_W_matrix[i] = (float *)malloc(m * sizeof(float)); }
-
-    float **imag_W_matrix = (float **)malloc(l * sizeof(float *));
-    for (int i = 0; i < l; i++) { imag_W_matrix[i] = (float *)malloc(m * sizeof(float)); }
-
-    float **real_output_matrix = (float **)malloc(l * sizeof(float *));
-    for (int i = 0; i < l; i++) { real_output_matrix[i] = (float *)malloc(m * sizeof(float)); }
-
-    float **imag_output_matrix = (float **)malloc(l * sizeof(float *));
-    for (int i = 0; i < l; i++) { imag_output_matrix[i] = (float *)malloc(m * sizeof(float)); }
-
-    i = 0; j = 0;
-    // making column matrix
-    while (i < m) { // m is number of columns
-        while (j < l) {
-            column_matrix[j][i] = sequence[j];
-            j++; // next row
-        }
-        i++; // next column
-    }
-
-    if (n == 1) { return **column_matrix; }
-   
-    for (int k = 0; k < m; k++){
-        n_point_fft(column_matrix[k], (n/2));
-        real_W_matrix, imag_W_matrix = make_twiddle_factor_matrix(l, m, n);
-        real_output_matrix, imag_output_matrix = dft_multiply(column_matrix, real_W_matrix, imag_W_matrix, n);
-    }
-
-    return real_output_matrix, imag_output_matrix;
-}
 
 
 void display_output(int real_matrix, int n) {
