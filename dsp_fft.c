@@ -1,9 +1,106 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <complex.h>
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 
 // takes input sequence from text files and performs n-point FFT and prints output
 
-void display_output(int sequence[], int n) {
+
+double _Complex** make_twiddle_factor_matrix(int k, int n, int N) { // do we want this to return a pointer or like rn
+    float W_real, W_imag; 
+    // will this work?
+    double angle = 0;
+   
+    double _Complex **real_twiddle_factor_matrix = (double _Complex **)malloc(k * sizeof(double _Complex *));
+    for (int i = 0; i < k; i++) { real_twiddle_factor_matrix[i] = (double _Complex *)malloc(n * sizeof(double _Complex)); }
+    
+    double _Complex **imag_twiddle_factor_matrix = (double _Complex **)malloc(k * sizeof(double _Complex *));
+    for (int i = 0; i < k; i++) { imag_twiddle_factor_matrix[i] = (double _Complex *)malloc(n * sizeof(double _Complex)); }
+   
+    
+    for (int i = 0; i < k; i++) {
+        for (int j = 0; j < n; j++){
+            angle = (-2.0 * M_PI * (i*j)) / N;
+            W_real = cos(angle);
+            real_twiddle_factor_matrix[i][j] = W_real;
+            W_imag = -1 * sin(angle);
+            imag_twiddle_factor_matrix[i][j] = W_imag;
+        }
+    }
+
+    return real_twiddle_factor_matrix, imag_twiddle_factor_matrix;
+}
+
+double _Complex** dft_multiply(double _Complex** x_matrix, double _Complex** real_W_matrix,  double _Complex** imag_W_matrix, int n) { // do we want this to return a matrix or like rn
+    double _Complex** real_dft_matrix = (double _Complex**)malloc(n * sizeof(double _Complex*));
+    for (int i = 0; i < n; i++) { real_dft_matrix[i] = (double _Complex*)malloc(n * sizeof(double _Complex)); }
+
+    double _Complex** imag_dft_matrix = (double _Complex**)malloc(n * sizeof(double _Complex*));
+    for (int i = 0; i < n; i++) { imag_dft_matrix[i] = (double _Complex*)malloc(n * sizeof(double _Complex)); }
+    
+    // matrix multiplication
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            real_dft_matrix[i][j] = x_matrix[i][j] * real_W_matrix[i][j];
+            imag_dft_matrix[i][j] = x_matrix[i][j] * imag_W_matrix[i][j];
+        }
+    }
+    
+    return real_dft_matrix, imag_dft_matrix;
+}
+
+int n_point_fft(int *sequence, int n) {
+    int l = n/2; // number of rows
+    int m = n/2; // number of columns
+    int p = n/2;
+    int q = n/2;
+    int i = 0, j = 0;
+    int k = 0;
+    int W = 0;
+
+    int **column_matrix = (int **)malloc(l * sizeof(int *)); 
+    for (int i = 0; i < l; i++) { column_matrix[i] = (int *)malloc(m * sizeof(int)); }
+
+    int **row_matrix = (int **)malloc(l * sizeof(int *));
+    for (int i = 0; i < l; i++) { row_matrix[i] = (int *)malloc(m * sizeof(int)); }
+    
+    float **real_W_matrix = (float **)malloc(l * sizeof(float *));
+    for (int i = 0; i < l; i++) { real_W_matrix[i] = (float *)malloc(m * sizeof(float)); }
+
+    float **imag_W_matrix = (float **)malloc(l * sizeof(float *));
+    for (int i = 0; i < l; i++) { imag_W_matrix[i] = (float *)malloc(m * sizeof(float)); }
+
+    float **real_output_matrix = (float **)malloc(l * sizeof(float *));
+    for (int i = 0; i < l; i++) { real_output_matrix[i] = (float *)malloc(m * sizeof(float)); }
+
+    float **imag_output_matrix = (float **)malloc(l * sizeof(float *));
+    for (int i = 0; i < l; i++) { imag_output_matrix[i] = (float *)malloc(m * sizeof(float)); }
+
+    i = 0; j = 0;
+    // making column matrix
+    while (i < m) { // m is number of columns
+        while (j < l) {
+            column_matrix[j][i] = sequence[j];
+            j++; // next row
+        }
+        i++; // next column
+    }
+
+    if (n == 1) { return **column_matrix; }
+   
+    for (int k = 0; k < m; k++){
+        n_point_fft(column_matrix[k], (n/2));
+        real_W_matrix, imag_W_matrix = make_twiddle_factor_matrix(l, m, n);
+        real_output_matrix, imag_output_matrix = dft_multiply(column_matrix, real_W_matrix, imag_W_matrix, n);
+    }
+
+    return real_output_matrix, imag_output_matrix;
+}
+
+
+void display_output(int real_matrix, int n) {
     for (int i = 0; i < n; i++) {
         printf("%d", sequence[i]);
         if (i < n - 1) {
@@ -13,49 +110,10 @@ void display_output(int sequence[], int n) {
     printf("\n");
 }
 
-int n_point_fft(int *sequence, int n) { 
-    int l = n/2; // number of rows
-    int m = n/2; // number of columns
-    int p = n/2;
-    int q = n/2;
-    int i = 0, j = 0;
-
-    int **twiddle_factor_matrix = (int **)malloc(l * sizeof(int *));
-    for (int i = 0; i < l; i++) {
-        twiddle_factor_matrix[i] = (int *)malloc(m * sizeof(int));
-    }
-
-    int **column_matrix = (int **)malloc(l * sizeof(int *));
-    for (int i = 0; i < l; i++) {
-        column_matrix[i] = (int *)malloc(m * sizeof(int));
-    }
-
-    int **row_matrix = (int **)malloc(l * sizeof(int *));
-    for (int i = 0; i < l; i++) {
-        row_matrix[i] = (int *)malloc(m * sizeof(int));
-    }
-    
-    // making column matrix
-    while (i < m) { // k is number of columns
-        while (j < l) {
-            column_matrix[j][i] = sequence[j];
-            j++; // next row
-        }
-        i++; // next column
-        // k++;
-    }
-
-    
-
-
-
-    return 0;
-
-}
 
 int main() {
     int n = 0, i = 0, sequence_length = 0;
-    
+   
     FILE *file = fopen("E:\\avantika\\a_projects\\misc_projects\\sequence_in.txt", "r");
     if (file == NULL) { // to overcome file not found error
         printf("Error opening file.\n");
@@ -75,13 +133,13 @@ int main() {
         printf("N larger than 1024. Going to perform 1024-point FFT.");
         n = 1024;
     }
-    
+   
     if (n % 2 != 0)
     {
         printf("N not an even number. Rounding up to nearest even number.");
         n = n + 1;
     }
-    
+   
     int sequence[1024]; // max 1024-fft possible
     // int *sequence = (int *)malloc(n * sizeof(int));
 
@@ -92,14 +150,6 @@ int main() {
 
     fclose(file);
 
-    n_point_fft(sequence, n); 
+    n_point_fft(sequence, n);
     return 0;
 }
-
-
-
-
-
-
-
-
